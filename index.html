@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Fruit Market</title>
+    <meta name="description" content="Touch 3 same fruits to remove them - Puzzle game">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="FruitMarket">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="css_file.css">
+</head>
+<body>
+    <div class="start-screen" id="startScreen">
+        <h1 class="start-title">
+            <img src="img/fruit_apple_001.png" class="title-fruit-left" alt="Apple">
+            Fruit Market
+            <img src="img/fruit_orange_001.png" class="title-fruit-right" alt="Orange">
+        </h1>
+        
+        <div class="score-stats">
+            <div class="score-item">
+                <div class="score-title">📊 Last Score</div>
+                <div class="score-value" id="lastScore">0</div>
+            </div>
+            <div class="score-item">
+                <div class="score-title">🏆 Best Score</div>
+                <div class="score-value" id="highestScore">0</div>
+            </div>
+        </div>
+        
+        <div class="game-rules">
+            <div class="rule-title">🎯 How to Play</div>
+            <div class="rule-text">Touch 3 same fruits to remove them!</div>
+            
+            <div class="rule-title">⚡ Combo System</div>
+            <div class="rule-text">
+                • <span class="combo-highlight">Same fruit combo</span>: +0.5x bonus!<br>
+                • Different fruit match: +0.1x increase<br>
+                • Failed: Reset multiplier (x1.0)
+            </div>
+            
+            <div class="rule-title">🕐 Time Limit</div>
+            <div class="rule-text">Get as many points as possible in 30 seconds!</div>
+            
+            <div class="rule-title">🍓 Fruit Types</div>
+            <div class="rule-text">🍎🍊🍌🍇🍓🥝🍑 Total 7 fruits</div>
+        </div>
+        
+        <button class="start-btn" onclick="startGame()">Start Game</button>
+    </div>
+
+    <div class="game-container">
+        <div class="header">
+            <div class="score">
+                <span class="score-label">SCORE</span>
+                <span class="score-value" id="score">0</span>
+            </div>
+            <div class="combo-display">
+                <div class="combo-counter" id="comboCounter">0</div>
+                <div class="multiplier" id="multiplier">x1.0</div>
+            </div>
+            <button class="restart-btn-game" onclick="restartGame()">🏠</button>
+        </div>
+        
+        <div class="timer-container">
+            <div class="timer-bar" id="timerBar"></div>
+        </div>
+        
+        <div class="grid" id="grid"></div>
+        
+        <div class="combo-text" id="comboText"></div>
+    </div>
+
+    <div class="siren-warning" id="sirenWarning"></div>
+
+    <div class="game-over" id="gameOver">
+        <div class="game-over-content">
+            <h2>Game Over!</h2>
+            <div class="final-score" id="finalScore">0</div>
+            <button class="restart-btn" onclick="restartGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script src="js_file.js"></script>
+</body>
+</html>
