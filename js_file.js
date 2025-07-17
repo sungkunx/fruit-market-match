@@ -444,7 +444,40 @@ function startGame() {
         initAudio();
     }
     
+    // Hide start screen
     document.getElementById('startScreen').style.display = 'none';
+    
+    // Show countdown
+    showCountdown();
+}
+
+function showCountdown() {
+    const countdownOverlay = document.getElementById('countdownOverlay');
+    const countdownText = document.getElementById('countdownText');
+    
+    // Show countdown overlay
+    countdownOverlay.classList.add('show');
+    
+    // Start with "Ready"
+    countdownText.textContent = 'Ready';
+    countdownText.className = 'countdown-text ready';
+    countdownText.style.animation = 'countdownPulse 1s ease-out';
+    
+    setTimeout(() => {
+        // Change to "START!"
+        countdownText.textContent = 'START!';
+        countdownText.className = 'countdown-text start';
+        countdownText.style.animation = 'countdownPulse 1s ease-out';
+        
+        setTimeout(() => {
+            // Hide countdown and start game
+            countdownOverlay.classList.remove('show');
+            actuallyStartGame();
+        }, 1000);
+    }, 1000);
+}
+
+function actuallyStartGame() {
     score = 0;
     multiplier = 1.0;
     maxMultiplier = 1.0; // Reset max multiplier for new game
@@ -575,17 +608,179 @@ function updateComboDisplay() {
 
 // Initialize title fruit animations
 function initializeTitleAnimations() {
-    // 제목의 과일들은 기본 프레임만 사용
-    const titleApple = document.querySelector('.title-fruit-left');
-    const titleOrange = document.querySelector('.title-fruit-right');
+    // 장식 과일 애니메이션 시작
+    startDecorationAnimations();
+}
+
+// Start decoration fruit animations
+function startDecorationAnimations() {
+    const decorationFruits = document.querySelectorAll('.decoration-fruit');
     
-    if (titleApple) {
-        titleApple.src = 'img/fruit_apple_001.png';
+    decorationFruits.forEach((fruit, index) => {
+        // 각 과일마다 다른 간격으로 표정 변경 (2-5초 사이)
+        const interval = 2000 + (index * 500) + Math.random() * 1000;
+        
+        setInterval(() => {
+            changeDecorationExpression(fruit);
+        }, interval);
+    });
+}
+
+// Change decoration fruit expression randomly
+function changeDecorationExpression(fruitElement) {
+    const fruitType = fruitElement.dataset.fruit;
+    
+    // 랜덤하게 표정 선택 (1-4번 프레임 중)
+    const expressions = ['001', '002', '003', '004'];
+    const randomExpression = expressions[Math.floor(Math.random() * expressions.length)];
+    
+    // 표정 변경
+    fruitElement.src = `img/fruit_${fruitType}_${randomExpression}.png`;
+    
+    // 약간의 스케일 효과 추가
+    fruitElement.style.transform = 'scale(1.1)';
+    
+    // 1초 후 원래 크기로 복원하고 기본 표정으로 돌아가기
+    setTimeout(() => {
+        fruitElement.style.transform = 'scale(1)';
+        // 50% 확률로 기본 표정으로 돌아가기
+        if (Math.random() < 0.5) {
+            fruitElement.src = `img/fruit_${fruitType}_001.png`;
+        }
+    }, 1000);
+}
+
+// Handle decoration fruit click
+function onDecorationFruitClick(fruitElement) {
+    const fruitType = fruitElement.dataset.fruit;
+    
+    // 현재 표정 확인
+    const currentSrc = fruitElement.src;
+    const currentFrame = currentSrc.substring(currentSrc.lastIndexOf('_') + 1, currentSrc.lastIndexOf('.'));
+    
+    // 현재 표정과 다른 표정들 중에서 랜덤 선택
+    const allExpressions = ['001', '002', '003', '004'];
+    const otherExpressions = allExpressions.filter(exp => exp !== currentFrame);
+    const randomExpression = otherExpressions[Math.floor(Math.random() * otherExpressions.length)];
+    
+    // 클릭 효과음 재생 (게임 중이 아닐 때만)
+    if (!gameRunning && audioContext) {
+        playPopSound();
     }
-    if (titleOrange) {
-        titleOrange.src = 'img/fruit_orange_001.png';
+    
+    // 표정 변경
+    fruitElement.src = `img/fruit_${fruitType}_${randomExpression}.png`;
+    
+    // 클릭 애니메이션 효과
+    fruitElement.style.transform = 'scale(1.2)';
+    
+    setTimeout(() => {
+        fruitElement.style.transform = 'scale(1)';
+    }, 200);
+}
+
+// Popup Functions
+function showTutorial() {
+    const popup = document.getElementById('tutorialPopup');
+    popup.classList.add('show');
+    // Prevent body scroll when popup is open
+    document.body.style.overflow = 'hidden';
+}
+
+function closeTutorial() {
+    const popup = document.getElementById('tutorialPopup');
+    popup.classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+function showRanking() {
+    const popup = document.getElementById('rankingPopup');
+    popup.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    
+    // Generate and display ranking
+    generateRanking();
+}
+
+function closeRanking() {
+    const popup = document.getElementById('rankingPopup');
+    popup.classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+// Generate fake global ranking (15000-20000 points)
+function generateRanking() {
+    const names = [
+        'FruitMaster', 'ComboKing', 'SwipeQueen', 'MatchLord', 'PuzzleGuru',
+        'TouchWizard', 'ScoreHunter', 'GameChamp', 'FruitNinja', 'MatchMaker',
+        'SwipeHero', 'PuzzlePro', 'ComboMaster', 'TouchLegend', 'ScoreBeast',
+        'MatchGod', 'FruitExpert', 'SwipeMaster', 'PuzzleKing', 'TouchPro'
+    ];
+    
+    // Generate 20 random scores between 15000-20000
+    const rankings = [];
+    for (let i = 0; i < 20; i++) {
+        const score = Math.floor(Math.random() * 5000) + 15000; // 15000-20000
+        const name = names[Math.floor(Math.random() * names.length)];
+        rankings.push({ name, score });
+    }
+    
+    // Sort by score (highest first)
+    rankings.sort((a, b) => b.score - a.score);
+    
+    // Display rankings
+    const rankingList = document.getElementById('rankingList');
+    rankingList.innerHTML = '';
+    
+    rankings.slice(0, 10).forEach((player, index) => {
+        const rankItem = document.createElement('div');
+        rankItem.className = 'rank-item';
+        rankItem.innerHTML = `
+            <span class="rank-number">${index + 1}</span>
+            <span class="rank-name">${player.name}</span>
+            <span class="rank-score">${player.score.toLocaleString()}</span>
+        `;
+        rankingList.appendChild(rankItem);
+    });
+    
+    // Update user rank
+    const userScore = highestScore;
+    const userRankElement = document.getElementById('yourRankScore');
+    userRankElement.textContent = userScore.toLocaleString();
+    
+    // Calculate user position
+    const userPosition = rankings.filter(player => player.score > userScore).length + 1;
+    const rankNumberElement = document.querySelector('.your-rank .rank-number');
+    
+    if (userScore === 0) {
+        rankNumberElement.textContent = '-';
+    } else if (userPosition <= 20) {
+        rankNumberElement.textContent = userPosition;
+    } else {
+        rankNumberElement.textContent = '20+';
     }
 }
+
+// Close popup when clicking outside
+document.addEventListener('click', function(e) {
+    const tutorialPopup = document.getElementById('tutorialPopup');
+    const rankingPopup = document.getElementById('rankingPopup');
+    
+    if (e.target === tutorialPopup) {
+        closeTutorial();
+    }
+    if (e.target === rankingPopup) {
+        closeRanking();
+    }
+});
+
+// Close popup with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeTutorial();
+        closeRanking();
+    }
+});
 
 // Initialize
 loadGameData();

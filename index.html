@@ -16,10 +16,18 @@
 <body>
     <div class="start-screen" id="startScreen">
         <h1 class="start-title">
-            <img src="img/fruit_apple_001.png" class="title-fruit-left" alt="Apple">
-            Fruit Market
-            <img src="img/fruit_orange_001.png" class="title-fruit-right" alt="Orange">
+            <img src="img/Fruit-Market-title.png" class="main-title-image" alt="Fruit Market">
         </h1>
+        
+        <div class="title-decorations">
+            <img src="img/fruit_banana_001.png" class="decoration-fruit" data-fruit="banana" alt="Banana" onclick="onDecorationFruitClick(this)">
+            <img src="img/fruit_grape_001.png" class="decoration-fruit" data-fruit="grape" alt="Grape" onclick="onDecorationFruitClick(this)">
+            <img src="img/fruit_strawberry_001.png" class="decoration-fruit" data-fruit="strawberry" alt="Strawberry" onclick="onDecorationFruitClick(this)">
+            <img src="img/fruit_kiwi_001.png" class="decoration-fruit" data-fruit="kiwi" alt="Kiwi" onclick="onDecorationFruitClick(this)">
+            <img src="img/fruit_cherry_001.png" class="decoration-fruit" data-fruit="cherry" alt="Cherry" onclick="onDecorationFruitClick(this)">
+            <img src="img/fruit_apple_001.png" class="decoration-fruit" data-fruit="apple" alt="Apple" onclick="onDecorationFruitClick(this)">
+            <img src="img/fruit_orange_001.png" class="decoration-fruit" data-fruit="orange" alt="Orange" onclick="onDecorationFruitClick(this)">
+        </div>
         
         <div class="score-stats">
             <div class="score-item">
@@ -32,25 +40,16 @@
             </div>
         </div>
         
-        <div class="game-rules">
-            <div class="rule-title">🎯 How to Play</div>
-            <div class="rule-text">Touch 3 same fruits to remove them!</div>
-            
-            <div class="rule-title">⚡ Combo System</div>
-            <div class="rule-text">
-                • <span class="combo-highlight">Same fruit combo</span>: +0.5x bonus!<br>
-                • Different fruit match: +0.1x increase<br>
-                • Failed: Reset multiplier (x1.0)
-            </div>
-            
-            <div class="rule-title">🕐 Time Limit</div>
-            <div class="rule-text">Get as many points as possible in 30 seconds!</div>
-            
-            <div class="rule-title">🍓 Fruit Types</div>
-            <div class="rule-text">🍎🍊🍌🍇🍓🥝🍑 Total 7 fruits</div>
+        <div class="button-container">
+            <button class="tutorial-btn" onclick="showTutorial()">📖 How to Play</button>
+            <button class="ranking-btn" onclick="showRanking()">🏆 Global Ranking</button>
+            <button class="start-btn" onclick="startGame()">🎮 Start Game</button>
         </div>
-        
-        <button class="start-btn" onclick="startGame()">Start Game</button>
+    </div>
+
+    <!-- Ready/Start Countdown -->
+    <div class="countdown-overlay" id="countdownOverlay">
+        <div class="countdown-text" id="countdownText">Ready</div>
     </div>
 
     <div class="game-container">
@@ -82,6 +81,63 @@
             <h2>Game Over!</h2>
             <div class="final-score" id="finalScore">0</div>
             <button class="restart-btn" onclick="restartGame()">Play Again</button>
+        </div>
+    </div>
+
+    <!-- Tutorial Popup -->
+    <div class="popup-overlay" id="tutorialPopup">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2>📖 How to Play</h2>
+                <button class="close-btn" onclick="closeTutorial()">✕</button>
+            </div>
+            <div class="popup-body">
+                <div class="rule-section">
+                    <div class="rule-title">🎯 How to Play</div>
+                    <div class="rule-text">Touch 3 same fruits to remove them!</div>
+                </div>
+                
+                <div class="rule-section">
+                    <div class="rule-title">⚡ Combo System</div>
+                    <div class="rule-text">
+                        • <span class="combo-highlight">Same fruit combo</span>: +0.5x bonus!<br>
+                        • Different fruit match: +0.1x increase<br>
+                        • Failed: Reset multiplier (x1.0)
+                    </div>
+                </div>
+                
+                <div class="rule-section">
+                    <div class="rule-title">🕐 Time Limit</div>
+                    <div class="rule-text">Get as many points as possible in 30 seconds!</div>
+                </div>
+                
+                <div class="rule-section">
+                    <div class="rule-title">🍓 Fruit Types</div>
+                    <div class="rule-text">🍎🍊🍌🍇🍓🥝🍑 Total 7 fruits</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ranking Popup -->
+    <div class="popup-overlay" id="rankingPopup">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2>🏆 Global Ranking</h2>
+                <button class="close-btn" onclick="closeRanking()">✕</button>
+            </div>
+            <div class="popup-body">
+                <div class="ranking-list" id="rankingList">
+                    <div class="loading">Loading rankings...</div>
+                </div>
+                <div class="user-rank" id="userRank">
+                    <div class="rank-item your-rank">
+                        <span class="rank-number">-</span>
+                        <span class="rank-name">You</span>
+                        <span class="rank-score" id="yourRankScore">0</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

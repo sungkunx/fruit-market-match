@@ -57,7 +57,7 @@ body.combo-bg-3 {
     align-items: center;
     padding: 8px;
     position: relative;
-    transform: scale(0.9);
+    transform: scale(0.95);
     transform-origin: center;
 }
 
@@ -442,7 +442,7 @@ body.combo-bg-3 {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #d4a574 0%, #c49969 50%, #b8925a 100%);
     background-size: 400% 400%;
     background-position: center;
     display: flex;
@@ -453,47 +453,45 @@ body.combo-bg-3 {
 }
 
 .start-title {
-    font-size: 28px;
-    color: white;
-    font-weight: bold;
-    margin-bottom: 20px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    margin-bottom: 25px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 15px;
     transform: scale(0.9);
 }
 
-.title-fruit-left, .title-fruit-right {
-    width: 40px;
-    height: 40px;
+.main-title-image {
+    height: 210px;
     object-fit: contain;
 }
 
-.title-fruit-left {
-    animation: titleAppleAnimation 2s infinite;
+.title-decorations {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    transform: scale(0.9);
 }
 
-.title-fruit-right {
-    animation: titleOrangeAnimation 2s infinite;
+.decoration-fruit {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+    cursor: pointer;
 }
 
-@keyframes titleAppleAnimation {
-    0% { transform: rotate(0deg) scale(1); }
-    25% { transform: rotate(-10deg) scale(1.1); }
-    50% { transform: rotate(0deg) scale(1); }
-    75% { transform: rotate(10deg) scale(1.1); }
-    100% { transform: rotate(0deg) scale(1); }
+.decoration-fruit:hover {
+    transform: scale(1.1);
 }
 
-@keyframes titleOrangeAnimation {
-    0% { transform: rotate(0deg) scale(1); }
-    25% { transform: rotate(10deg) scale(1.1); }
-    50% { transform: rotate(0deg) scale(1); }
-    75% { transform: rotate(-10deg) scale(1.1); }
-    100% { transform: rotate(0deg) scale(1); }
+.decoration-fruit:active {
+    transform: scale(0.95);
 }
+
+
 
 .game-rules {
     background: rgba(255, 255, 255, 0.15);
@@ -529,22 +527,46 @@ body.combo-bg-3 {
     font-weight: bold;
 }
 
-.start-btn {
-    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
-    color: white;
-    border: none;
-    padding: 20px 40px;
-    font-size: 24px;
-    border-radius: 30px;
-    cursor: pointer;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-    transition: transform 0.2s ease;
+.button-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
     transform: scale(0.9);
 }
 
-.start-btn:hover {
-    transform: translateY(-3px);
+.tutorial-btn, .ranking-btn, .start-btn {
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+    color: white;
+    border: none;
+    padding: 15px 35px;
+    font-size: 18px;
+    border-radius: 25px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    transition: transform 0.2s ease;
+    min-width: 200px;
 }
+
+.tutorial-btn {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+}
+
+.ranking-btn {
+    background: linear-gradient(45deg, #f093fb, #f5576c);
+}
+
+.start-btn {
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+    font-size: 20px;
+    padding: 18px 40px;
+    font-weight: bold;
+    border: 3px solid white;
+}
+
+.tutorial-btn:hover, .ranking-btn:hover, .start-btn:hover {
+    transform: translateY(-2px);
+}\n\n.tutorial-btn:active, .ranking-btn:active, .start-btn:active {\n    transform: translateY(0px);\n}
 
 .score-stats {
     display: flex;
@@ -568,7 +590,7 @@ body.combo-bg-3 {
 .score-title {
     font-size: 16px;
     font-weight: bold;
-    color: #FFD700;
+    color: #5D4037;
     margin-bottom: 8px;
     display: flex;
     align-items: center;
@@ -580,5 +602,228 @@ body.combo-bg-3 {
     color: white;
     padding-left: 10px;
     font-weight: bold;
+}
+
+/* Popup Styles */
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.popup-overlay.show {
+    display: flex;
+    opacity: 1;
+}
+
+.popup-content {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    width: 90%;
+    max-width: 400px;
+    max-height: 80vh;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    transform: scale(0.8);
+    transition: transform 0.3s ease;
+}
+
+.popup-overlay.show .popup-content {
+    transform: scale(1);
+}
+
+.popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    background: rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.popup-header h2 {
+    margin: 0;
+    color: white;
+    font-size: 22px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.close-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 20px;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.popup-body {
+    padding: 25px;
+    overflow-y: auto;
+    max-height: 60vh;
+}
+
+.rule-section {
+    margin-bottom: 20px;
+}
+
+.rule-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #FFD700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.rule-text {
+    color: white;
+    font-size: 14px;
+    line-height: 1.6;
+    padding-left: 10px;
+}
+
+.combo-highlight {
+    color: #FF1493;
+    font-weight: bold;
+}
+
+/* Ranking Styles */
+.ranking-list {
+    margin-bottom: 20px;
+}
+
+.rank-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+}
+
+.rank-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(5px);
+}
+
+.rank-item.your-rank {
+    background: rgba(255, 215, 0, 0.2);
+    border: 2px solid #FFD700;
+    font-weight: bold;
+}
+
+.rank-number {
+    font-weight: bold;
+    color: #FFD700;
+    min-width: 30px;
+}
+
+.rank-name {
+    flex: 1;
+    color: white;
+    margin-left: 15px;
+}
+
+.rank-score {
+    color: #4ECDC4;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.loading {
+    text-align: center;
+    color: white;
+    padding: 20px;
+    font-style: italic;
+}
+
+.user-rank {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
+/* Medal icons for top 3 */
+.rank-item:nth-child(1) .rank-number::before { content: "🥇 "; }
+.rank-item:nth-child(2) .rank-number::before { content: "🥈 "; }
+.rank-item:nth-child(3) .rank-number::before { content: "🥉 "; }
+
+/* Countdown Overlay */
+.countdown-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 4000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.countdown-overlay.show {
+    display: flex;
+    opacity: 1;
+}
+
+.countdown-text {
+    font-size: 80px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 4px 4px 8px rgba(0,0,0,0.8);
+    text-align: center;
+    transform: scale(0.5);
+    animation: countdownPulse 1s ease-out;
+}
+
+@keyframes countdownPulse {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.countdown-text.start {
+    color: #4ECDC4;
+    text-shadow: 4px 4px 8px rgba(0,0,0,0.8), 0 0 20px rgba(76, 236, 196, 0.6);
+}
+
+.countdown-text.ready {
+    color: #FFD700;
+    text-shadow: 4px 4px 8px rgba(0,0,0,0.8), 0 0 20px rgba(255, 215, 0, 0.6);
 }
 
