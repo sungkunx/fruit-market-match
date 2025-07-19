@@ -80,7 +80,24 @@
         <div class="game-over-content">
             <h2>Game Over!</h2>
             <div class="final-score" id="finalScore">0</div>
-            <button class="restart-btn" onclick="restartGame()">Play Again</button>
+            
+            <!-- Score submission form -->
+            <div class="score-submit" id="scoreSubmit" style="display: none;">
+                <p class="new-record-text">🎉 New High Score! Join the leaderboard:</p>
+                <input type="text" id="playerNameInput" placeholder="Enter your name" maxlength="15" class="name-input">
+                <div class="submit-buttons">
+                    <button class="submit-score-btn" onclick="submitScore()">
+                        <span class="btn-icon">🏆</span>
+                        Submit Score
+                    </button>
+                    <button class="skip-submit-btn" onclick="skipSubmit()">
+                        <span class="btn-icon">⏭️</span>
+                        Skip
+                    </button>
+                </div>
+            </div>
+            
+            <button class="restart-btn" id="playAgainBtn" onclick="restartGame()">Play Again</button>
         </div>
     </div>
 
@@ -98,22 +115,10 @@
                 </div>
                 
                 <div class="rule-section">
-                    <div class="rule-title">⚡ Combo System</div>
+                    <div class="rule-title">⚡ Score Tips</div>
                     <div class="rule-text">
-                        • <span class="combo-highlight">Same fruit combo</span>: +0.5x bonus!<br>
-                        • Different fruit match: +0.1x increase<br>
-                        • Failed: Reset multiplier (x1.0)
+                        Match the same fruits consecutively to boost your score faster!
                     </div>
-                </div>
-                
-                <div class="rule-section">
-                    <div class="rule-title">🕐 Time Limit</div>
-                    <div class="rule-text">Get as many points as possible in 30 seconds!</div>
-                </div>
-                
-                <div class="rule-section">
-                    <div class="rule-title">🍓 Fruit Types</div>
-                    <div class="rule-text">🍎🍊🍌🍇🍓🥝🍑 Total 7 fruits</div>
                 </div>
             </div>
         </div>
@@ -141,6 +146,8 @@
         </div>
     </div>
 
+    <!-- Firebase Configuration (load before main script) -->
+    <script type="module" src="firebase-config.js"></script>
     <script src="js_file.js"></script>
 </body>
 </html>

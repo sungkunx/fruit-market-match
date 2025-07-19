@@ -422,6 +422,20 @@ function endGame() {
     clearInterval(timerInterval);
     document.getElementById('sirenWarning').classList.remove('siren-active');
     document.getElementById('finalScore').textContent = score;
+    
+    // Check if this is a new personal best score (worth submitting to leaderboard)
+    const isNewPersonalBest = score > highestScore;
+    const meetsMinimumThreshold = score >= 5000; // Minimum score threshold for leaderboard
+    
+    // Show ranking submission only if it's both a new personal best AND meets minimum threshold
+    if (isNewPersonalBest && meetsMinimumThreshold) {
+        document.getElementById('scoreSubmit').style.display = 'block';
+        document.getElementById('playAgainBtn').style.display = 'none';
+    } else {
+        document.getElementById('scoreSubmit').style.display = 'none';
+        document.getElementById('playAgainBtn').style.display = 'block';
+    }
+    
     document.getElementById('gameOver').style.display = 'flex';
     
     // Update last score and save data
@@ -436,6 +450,53 @@ function endGame() {
     if (backgroundMusic) {
         backgroundMusic.stop();
     }
+}
+
+// Submit score to Firebase
+async function submitScore() {
+    const playerName = document.getElementById('playerNameInput').value.trim();
+    
+    if (!playerName) {
+        alert('Please enter your name!');
+        return;
+    }
+    
+    // Show loading state
+    const submitBtn = document.querySelector('.submit-score-btn');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="btn-icon">⏳</span>Submitting...';
+    submitBtn.disabled = true;
+    
+    try {
+        const success = await submitScoreToFirebase(playerName, score);
+        
+        if (success) {
+            alert('Successfully added to leaderboard! 🎉');
+        } else {
+            alert('Failed to submit score. Please try again.');
+        }
+    } catch (error) {
+        alert('An error occurred while submitting your score.');
+        console.error('Submit score error:', error);
+    }
+    
+    // Reset button state
+    submitBtn.innerHTML = originalText;
+    submitBtn.disabled = false;
+    
+    // Hide submit form and show play again button
+    hideSubmitForm();
+}
+
+// Skip score submission
+function skipSubmit() {
+    hideSubmitForm();
+}
+
+// Hide submit form and show play again button
+function hideSubmitForm() {
+    document.getElementById('scoreSubmit').style.display = 'none';
+    document.getElementById('playAgainBtn').style.display = 'block';
 }
 
 function startGame() {
@@ -663,8 +724,11 @@ function onDecorationFruitClick(fruitElement) {
     const otherExpressions = allExpressions.filter(exp => exp !== currentFrame);
     const randomExpression = otherExpressions[Math.floor(Math.random() * otherExpressions.length)];
     
-    // 클릭 효과음 재생 (게임 중이 아닐 때만)
-    if (!gameRunning && audioContext) {
+    // 클릭 효과음 재생 (항상 재생)
+    if (!audioContext) {
+        initAudio();
+    }
+    if (audioContext) {
         playPopSound();
     }
     
@@ -698,6 +762,16 @@ function showRanking() {
     popup.classList.add('show');
     document.body.style.overflow = 'hidden';
     
+    // Update header with current month
+    const now = new Date();
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"];
+    const currentMonth = monthNames[now.getMonth()];
+    const currentYear = now.getFullYear();
+    
+    const header = popup.querySelector('.popup-header h2');
+    header.textContent = `🏆 Global Ranking - ${currentMonth} ${currentYear}`;
+    
     // Generate and display ranking
     generateRanking();
 }
@@ -708,31 +782,90 @@ function closeRanking() {
     document.body.style.overflow = '';
 }
 
-// Generate fake global ranking (15000-20000 points)
-function generateRanking() {
-    const names = [
-        'FruitMaster', 'ComboKing', 'SwipeQueen', 'MatchLord', 'PuzzleGuru',
-        'TouchWizard', 'ScoreHunter', 'GameChamp', 'FruitNinja', 'MatchMaker',
-        'SwipeHero', 'PuzzlePro', 'ComboMaster', 'TouchLegend', 'ScoreBeast',
-        'MatchGod', 'FruitExpert', 'SwipeMaster', 'PuzzleKing', 'TouchPro'
-    ];
-    
-    // Generate 20 random scores between 15000-20000
-    const rankings = [];
-    for (let i = 0; i < 20; i++) {
-        const score = Math.floor(Math.random() * 5000) + 15000; // 15000-20000
-        const name = names[Math.floor(Math.random() * names.length)];
-        rankings.push({ name, score });
+// Get current month collection name (for monthly reset)
+function getCurrentMonthCollection() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // 01-12
+    return `rankings_${year}_${month}`; // e.g., "rankings_2024_01"
+}
+
+// Firebase ranking functions
+async function submitScoreToFirebase(playerName, score) {
+    if (!window.firebaseDB || !window.firebaseUtils) {
+        console.log('Firebase not initialized, using local ranking');
+        return false;
     }
     
-    // Sort by score (highest first)
-    rankings.sort((a, b) => b.score - a.score);
+    try {
+        const { collection, addDoc, serverTimestamp } = window.firebaseUtils;
+        
+        // Use monthly collection for automatic reset
+        const monthlyCollection = getCurrentMonthCollection();
+        
+        await addDoc(collection(window.firebaseDB, monthlyCollection), {
+            name: playerName,
+            score: score,
+            timestamp: serverTimestamp()
+        });
+        
+        console.log(`Score submitted to Firebase successfully (${monthlyCollection})`);
+        return true;
+    } catch (error) {
+        console.error('Error submitting score to Firebase:', error);
+        return false;
+    }
+}
+
+async function loadRankingsFromFirebase() {
+    if (!window.firebaseDB || !window.firebaseUtils) {
+        console.log('Firebase not initialized, using fake ranking');
+        generateFakeRanking();
+        return;
+    }
     
-    // Display rankings
+    try {
+        const { collection, query, orderBy, limit, getDocs } = window.firebaseUtils;
+        
+        // Use current month's collection for rankings
+        const monthlyCollection = getCurrentMonthCollection();
+        
+        // Query top 10 scores from current month
+        const q = query(
+            collection(window.firebaseDB, monthlyCollection),
+            orderBy('score', 'desc'),
+            limit(10)
+        );
+        
+        const querySnapshot = await getDocs(q);
+        const rankings = [];
+        
+        querySnapshot.forEach((doc) => {
+            rankings.push(doc.data());
+        });
+        
+        if (rankings.length === 0) {
+            console.log(`No rankings found for ${monthlyCollection}, using fake data`);
+            generateFakeRanking();
+            return;
+        }
+        
+        displayRankings(rankings);
+        updateUserRank(rankings);
+        
+        console.log(`Rankings loaded from ${monthlyCollection}`);
+        
+    } catch (error) {
+        console.error('Error loading rankings from Firebase:', error);
+        generateFakeRanking();
+    }
+}
+
+function displayRankings(rankings) {
     const rankingList = document.getElementById('rankingList');
     rankingList.innerHTML = '';
     
-    rankings.slice(0, 10).forEach((player, index) => {
+    rankings.forEach((player, index) => {
         const rankItem = document.createElement('div');
         rankItem.className = 'rank-item';
         rankItem.innerHTML = `
@@ -742,8 +875,9 @@ function generateRanking() {
         `;
         rankingList.appendChild(rankItem);
     });
-    
-    // Update user rank
+}
+
+function updateUserRank(rankings) {
     const userScore = highestScore;
     const userRankElement = document.getElementById('yourRankScore');
     userRankElement.textContent = userScore.toLocaleString();
@@ -754,12 +888,142 @@ function generateRanking() {
     
     if (userScore === 0) {
         rankNumberElement.textContent = '-';
-    } else if (userPosition <= 20) {
+    } else if (userPosition <= 10) {
         rankNumberElement.textContent = userPosition;
     } else {
-        rankNumberElement.textContent = '20+';
+        rankNumberElement.textContent = '10+';
     }
 }
+
+// Fallback function for fake ranking (when Firebase is not available)
+function generateFakeRanking() {
+    const names = [
+        'FruitMaster', 'ComboKing', 'SwipeQueen', 'MatchLord', 'PuzzleGuru',
+        'TouchWizard', 'ScoreHunter', 'GameChamp', 'FruitNinja', 'MatchMaker',
+        'SwipeHero', 'PuzzlePro', 'ComboMaster', 'TouchLegend', 'ScoreBeast',
+        'MatchGod', 'FruitExpert', 'SwipeMaster', 'PuzzleKing', 'TouchPro'
+    ];
+    
+    // Generate 10 random scores between 15000-20000
+    const rankings = [];
+    for (let i = 0; i < 10; i++) {
+        const score = Math.floor(Math.random() * 5000) + 15000; // 15000-20000
+        const name = names[Math.floor(Math.random() * names.length)];
+        rankings.push({ name, score });
+    }
+    
+    // Sort by score (highest first)
+    rankings.sort((a, b) => b.score - a.score);
+    
+    displayRankings(rankings);
+    updateUserRank(rankings);
+}
+
+// Initialize Firebase with dummy data (call once per month)
+async function initializeMonthlyRankings() {
+    if (!window.firebaseDB || !window.firebaseUtils) {
+        console.log('Firebase not initialized');
+        return false;
+    }
+    
+    try {
+        const { collection, addDoc, serverTimestamp } = window.firebaseUtils;
+        const monthlyCollection = getCurrentMonthCollection();
+        
+        // Dummy ranking data with funny names
+        const dummyData = [
+            { name: "God", score: 20000 },           // 신
+            { name: "Deity", score: 15000 },         // 신들중에 가장 아래
+            { name: "Demigod", score: 12000 },       // 신의 바로 밑 인간
+            { name: "Bookworm", score: 9000 },       // 책을 읽을 줄 아는 인간
+            { name: "Awakened", score: 7000 },       // 정신차린 인간
+            { name: "Noob", score: 5000 },           // 폐급 인간
+            { name: "Human", score: 3500 },          // 드디어 인간
+            { name: "Fruitarian", score: 2000 },     // 과일을 좋아하는 유인원
+            { name: "Thinker", score: 1000 },        // 생각을 하는 유인원
+            { name: "Ape", score: 500 }              // 유인원
+        ];
+        
+        console.log(`Initializing rankings for ${monthlyCollection}...`);
+        
+        // Add each dummy entry to Firebase
+        for (const entry of dummyData) {
+            await addDoc(collection(window.firebaseDB, monthlyCollection), {
+                name: entry.name,
+                score: entry.score,
+                timestamp: serverTimestamp()
+            });
+        }
+        
+        console.log(`Successfully initialized ${dummyData.length} entries for ${monthlyCollection}`);
+        return true;
+        
+    } catch (error) {
+        console.error('Error initializing monthly rankings:', error);
+        return false;
+    }
+}
+
+// Updated generateRanking function to use Firebase
+function generateRanking() {
+    loadRankingsFromFirebase();
+}
+
+// Reset current month's rankings (delete all entries)
+async function resetCurrentMonthRankings() {
+    if (!window.firebaseDB || !window.firebaseUtils) {
+        console.log('Firebase not initialized');
+        return false;
+    }
+    
+    try {
+        const { collection, query, getDocs, deleteDoc } = window.firebaseUtils;
+        const monthlyCollection = getCurrentMonthCollection();
+        
+        console.log(`Resetting rankings for ${monthlyCollection}...`);
+        
+        // Get all documents in current month's collection
+        const q = query(collection(window.firebaseDB, monthlyCollection));
+        const querySnapshot = await getDocs(q);
+        
+        let deletedCount = 0;
+        
+        // Delete each document
+        for (const doc of querySnapshot.docs) {
+            await deleteDoc(doc.ref);
+            deletedCount++;
+        }
+        
+        console.log(`Successfully deleted ${deletedCount} entries from ${monthlyCollection}`);
+        return true;
+        
+    } catch (error) {
+        console.error('Error resetting monthly rankings:', error);
+        return false;
+    }
+}
+
+// Convenience function to reset and reinitialize rankings
+async function resetAndInitializeRankings() {
+    console.log('🔄 Resetting and reinitializing rankings...');
+    
+    const resetSuccess = await resetCurrentMonthRankings();
+    if (resetSuccess) {
+        const initSuccess = await initializeMonthlyRankings();
+        if (initSuccess) {
+            console.log('✅ Rankings reset and reinitialized successfully!');
+            return true;
+        }
+    }
+    
+    console.log('❌ Failed to reset and reinitialize rankings');
+    return false;
+}
+
+// Make functions available globally for console access
+window.initializeMonthlyRankings = initializeMonthlyRankings;
+window.resetCurrentMonthRankings = resetCurrentMonthRankings;
+window.resetAndInitializeRankings = resetAndInitializeRankings;
 
 // Close popup when clicking outside
 document.addEventListener('click', function(e) {

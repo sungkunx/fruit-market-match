@@ -476,8 +476,8 @@ body.combo-bg-3 {
 }
 
 .decoration-fruit {
-    width: 42px;
-    height: 42px;
+    width: 46px;
+    height: 46px;
     object-fit: contain;
     transition: transform 0.3s ease;
     cursor: pointer;
@@ -825,5 +825,100 @@ body.combo-bg-3 {
 .countdown-text.ready {
     color: #FFD700;
     text-shadow: 4px 4px 8px rgba(0,0,0,0.8), 0 0 20px rgba(255, 215, 0, 0.6);
+}
+
+/* Score Submission Styles */
+.new-record-text {
+    color: white;
+    margin: 15px 0;
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    text-align: center;
+}
+
+.name-input {
+    padding: 12px 15px;
+    border-radius: 15px;
+    border: 3px solid #FFD700;
+    margin: 15px 0;
+    width: 220px;
+    font-size: 16px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.name-input:focus {
+    border-color: #4ECDC4;
+    box-shadow: 0 0 20px rgba(78, 205, 196, 0.5);
+    transform: scale(1.05);
+}
+
+.submit-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.submit-score-btn, .skip-submit-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    min-width: 130px;
+    justify-content: center;
+}
+
+.submit-score-btn {
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    color: #2d3436;
+    border: 3px solid white;
+}
+
+.submit-score-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.5);
+    background: linear-gradient(45deg, #FFA500, #FFD700);
+}
+
+.submit-score-btn:active {
+    transform: translateY(-1px);
+}
+
+.submit-score-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.skip-submit-btn {
+    background: linear-gradient(45deg, #74b9ff, #a29bfe);
+    color: white;
+    border: 3px solid rgba(255, 255, 255, 0.5);
+}
+
+.skip-submit-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(116, 185, 255, 0.5);
+    background: linear-gradient(45deg, #a29bfe, #74b9ff);
+}
+
+.skip-submit-btn:active {
+    transform: translateY(-1px);
+}
+
+.btn-icon {
+    font-size: 18px;
 }
 
