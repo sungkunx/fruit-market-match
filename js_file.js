@@ -90,11 +90,12 @@ function playPopSound() {
     oscillator.stop(audioContext.currentTime + 0.1);
 }
 
-// 성공 효과음
-function playSuccessSound() {
+// 성공 효과음 (연쇄 단계마다 2음씩 높아짐)
+function playSuccessSound(chain = 1) {
     if (!audioContext) return;
 
-    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+    const pitch = Math.pow(2, ((chain - 1) * 2) / 12);
+    const notes = [523.25, 659.25, 783.99].map(freq => freq * pitch); // C5, E5, G5
     notes.forEach((freq, index) => {
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
@@ -214,6 +215,228 @@ function newBoard() {
     renderBoard();
 }
 
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// Runs a Web Animation and resolves when it ends. Cancelled animations resolve too.
+function animate(element, keyframes, options) {
+    return element.animate(keyframes, { fill: 'forwards', ...options }).finished.catch(() => {});
+}
+
+// Distance in layout pixels between neighboring cells (cells are square).
+function cellPitch() {
+    return cellElements[0][1].offsetLeft - cellElements[0][0].offsetLeft;
+}
+
+function animateSwap(a, b, reverse = false) {
+    const pitch = cellPitch();
+    const dx = (b.col - a.col) * pitch;
+    const dy = (b.row - a.row) * pitch;
+    const wrapperA = fruitWrapper(a);
+    const wrapperB = fruitWrapper(b);
+    const still = 'translate(0px, 0px)';
+    const toB = `translate(${dx}px, ${dy}px)`;
+    const toA = `translate(${-dx}px, ${-dy}px)`;
+    const options = { duration: 150, easing: 'ease-in-out' };
+
+    wrapperA.classList.add('moving');
+    return Promise.all([
+        animate(wrapperA, reverse ? [{ transform: toB }, { transform: still }] : [{ transform: still }, { transform: toB }], options),
+        animate(wrapperB, reverse ? [{ transform: toA }, { transform: still }] : [{ transform: still }, { transform: toA }], options)
+    ]);
+}
+
+function animatePop(cells) {
+    cells.forEach(cell => setCellFrame(cell, '003'));
+    return Promise.all(cells.map(cell => animate(fruitWrapper(cell), [
+        { transform: 'scale(1)', opacity: 1 },
+        { transform: 'scale(1.25)', opacity: 1, offset: 0.4 },
+        { transform: 'scale(0.2)', opacity: 0 }
+    ], { duration: 250, easing: 'ease-in' })));
+}
+
+// Every cell that changed receives its new fruit, starting from where it falls from.
+async function animateFalls(step) {
+    const pitch = cellPitch();
+    const moves = [
+        ...step.falls.map(fall => ({ to: fall.to, fruit: fall.fruit, distance: fall.to.row - fall.from.row })),
+        ...step.spawns.map(spawn => ({ to: spawn.to, fruit: spawn.fruit, distance: spawn.to.row - spawn.fromRow }))
+    ];
+
+    const animations = moves.map(move => {
+        clearAnimations(move.to);
+        setCellFruit(move.to, move.fruit);
+        return animate(fruitWrapper(move.to), [
+            { transform: `translateY(${-move.distance * pitch}px)` },
+            { transform: 'translateY(0px)' }
+        ], { duration: Math.min(400, 200 + move.distance * 50), easing: 'ease-in' });
+    });
+
+    await Promise.all(animations);
+    moves.forEach(move => clearAnimations(move.to));
+}
+
+async function animateShuffle(nextBoard) {
+    const wrappers = cellElements.flat().map(cell => cell.firstChild);
+    await Promise.all(wrappers.map(wrapper => animate(wrapper, [
+        { transform: 'scale(1)' },
+        { transform: 'scale(0)' }
+    ], { duration: 200, easing: 'ease-in' })));
+
+    board = nextBoard;
+    renderBoard();
+    await Promise.all(wrappers.map(wrapper => animate(wrapper, [
+        { transform: 'scale(0)' },
+        { transform: 'scale(1)' }
+    ], { duration: 200, easing: 'ease-out' })));
+    wrappers.forEach(wrapper => wrapper.getAnimations().forEach(animation => animation.cancel()));
+}
+
+// Frowning faces on the two swapped fruits. Does not block input.
+function showFailedExpression(cells) {
+    cells.forEach(cell => setCellFrame(cell, '004'));
+    setTimeout(() => {
+        cells.forEach(cell => {
+            if (fruitImage(cell).src.endsWith('_004.png')) setCellFrame(cell, '001');
+        });
+    }, 500);
+}
+
+function canAcceptInput() {
+    return gameRunning && !isAnimating && !timeUp;
+}
+
+function cellFromEvent(event) {
+    const cellElement = event.target.closest('.cell');
+    if (!cellElement) return null;
+    return { row: Number(cellElement.dataset.row), col: Number(cellElement.dataset.col) };
+}
+
+function onGridPointerDown(event) {
+    if (!canAcceptInput() || pointerStart) return;
+    const cell = cellFromEvent(event);
+    if (!cell) return;
+
+    event.preventDefault();
+    document.getElementById('grid').setPointerCapture(event.pointerId);
+    pointerStart = { pointerId: event.pointerId, cell, x: event.clientX, y: event.clientY };
+    playPopSound();
+    setCellFrame(cell, '002');
+}
+
+function onGridPointerMove(event) {
+    if (!pointerStart || event.pointerId !== pointerStart.pointerId) return;
+
+    const dx = event.clientX - pointerStart.x;
+    const dy = event.clientY - pointerStart.y;
+    const threshold = cellElements[0][0].getBoundingClientRect().width * SWIPE_THRESHOLD;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return;
+
+    const from = pointerStart.cell;
+    const to = Math.abs(dx) > Math.abs(dy)
+        ? { row: from.row, col: from.col + Math.sign(dx) }
+        : { row: from.row + Math.sign(dy), col: from.col };
+    pointerStart = null;
+
+    if (to.row < 0 || to.row >= Board.ROWS || to.col < 0 || to.col >= Board.COLS) {
+        setCellFrame(from, '001');
+        return;
+    }
+    handleSwap(from, to);
+}
+
+function onGridPointerEnd(event) {
+    if (!pointerStart || event.pointerId !== pointerStart.pointerId) return;
+    const cell = pointerStart.cell;
+    pointerStart = null;
+    setCellFrame(cell, '001');
+}
+
+function setupGridInput() {
+    const gridElement = document.getElementById('grid');
+    gridElement.addEventListener('pointerdown', onGridPointerDown);
+    gridElement.addEventListener('pointermove', onGridPointerMove);
+    gridElement.addEventListener('pointerup', onGridPointerEnd);
+    gridElement.addEventListener('pointercancel', onGridPointerEnd);
+}
+
+// a: the cell the player dragged, b: the neighbor it was pushed into.
+async function handleSwap(a, b) {
+    if (!canAcceptInput()) return;
+    isAnimating = true;
+    const session = gameSession;
+    const movedFruit = board[a.row][a.col];
+    const displacedFruit = board[b.row][b.col];
+    const result = Board.resolveMove(board, a, b, Math.random, activeFruits);
+
+    await animateSwap(a, b);
+    if (session !== gameSession) return;
+
+    if (!result.valid) {
+        await animateSwap(a, b, true);
+        if (session !== gameSession) return;
+        clearAnimations(a);
+        clearAnimations(b);
+        playFailSound();
+        showFailedExpression([a, b]);
+        await finishTurn(session);
+        return;
+    }
+
+    setCellFruit(a, result.swappedBoard[a.row][a.col]);
+    setCellFruit(b, result.swappedBoard[b.row][b.col]);
+    clearAnimations(a);
+    clearAnimations(b);
+
+    const scored = Scoring.scoreMove(result, { multiplier, comboCount, lastMatchedFruit }, movedFruit, displacedFruit);
+    const completed = await playSteps(result.steps, scored.stepScores, session);
+    if (!completed) return;
+
+    board = result.finalBoard;
+    multiplier = scored.state.multiplier;
+    comboCount = scored.state.comboCount;
+    lastMatchedFruit = scored.state.lastMatchedFruit;
+    maxMultiplier = Math.max(maxMultiplier, multiplier);
+    if (scored.isCombo) {
+        showComboEffect(`COMBO x${comboCount}! +0.5x`);
+    }
+    updateDisplay();
+    updateComboDisplay();
+
+    await finishTurn(session);
+}
+
+// Plays each pop-and-fall step in order. Returns false if the game was left midway.
+async function playSteps(steps, stepScores, session) {
+    for (let i = 0; i < steps.length; i++) {
+        const step = steps[i];
+        playSuccessSound(step.chain);
+        await animatePop(step.cleared);
+        if (session !== gameSession) return false;
+
+        score += stepScores[i];
+        updateScoreDisplay();
+        if (step.kind === 'match' && step.chain >= 2) {
+            showComboEffect(`CHAIN x${step.chain}!`);
+        }
+
+        await animateFalls(step);
+        if (session !== gameSession) return false;
+    }
+    return true;
+}
+
+async function finishTurn(session) {
+    if (!Board.hasPossibleMove(board)) {
+        showComboEffect('Shuffle!');
+        await animateShuffle(Board.shuffle(board, Math.random));
+        if (session !== gameSession) return;
+    }
+    isAnimating = false;
+    if (timeUp) {
+        endGame();
+    }
+}
+
 function updateScoreDisplay() {
     document.getElementById('score').textContent = score;
 }
@@ -259,9 +482,12 @@ function updateComboEffects() {
 function showComboEffect(text) {
     const comboElement = document.getElementById('comboText');
     comboElement.textContent = text;
+    comboElement.classList.remove('combo-show');
+    void comboElement.offsetWidth; // restart the CSS animation
     comboElement.classList.add('combo-show');
-    
-    setTimeout(() => {
+
+    clearTimeout(comboTextTimer);
+    comboTextTimer = setTimeout(() => {
         comboElement.classList.remove('combo-show');
     }, 1500);
 }
@@ -902,6 +1128,7 @@ document.addEventListener('keydown', function(e) {
 // Initialize
 loadGameData();
 buildGrid();
+setupGridInput();
 newBoard();
 updateDisplay();
 updateComboDisplay();
