@@ -275,12 +275,13 @@ async function animateFalls(step) {
     moves.forEach(move => clearAnimations(move.to));
 }
 
-async function animateShuffle(nextBoard) {
+async function animateShuffle(nextBoard, session) {
     const wrappers = cellElements.flat().map(cell => cell.firstChild);
     await Promise.all(wrappers.map(wrapper => animate(wrapper, [
         { transform: 'scale(1)' },
         { transform: 'scale(0)' }
     ], { duration: 200, easing: 'ease-in' })));
+    if (session !== gameSession) return;
 
     board = nextBoard;
     renderBoard();
@@ -428,7 +429,7 @@ async function playSteps(steps, stepScores, session) {
 async function finishTurn(session) {
     if (!Board.hasPossibleMove(board)) {
         showComboEffect('Shuffle!');
-        await animateShuffle(Board.shuffle(board, Math.random));
+        await animateShuffle(Board.shuffle(board, Math.random), session);
         if (session !== gameSession) return;
     }
     isAnimating = false;
