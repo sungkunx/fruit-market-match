@@ -176,6 +176,85 @@
         return { valid: true, swappedBoard, steps, finalBoard };
     }
 
+    // The swap that pops the most cells right away. Ties keep the first one found
+    // (top to bottom, left to right, right neighbor before bottom neighbor).
+    function findBestMove(board) {
+        const rows = board.length;
+        const cols = board[0].length;
+        let best = null;
+
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                const a = { row, col };
+                const neighbors = [{ row, col: col + 1 }, { row: row + 1, col }];
+                neighbors.forEach(b => {
+                    if (!inBounds(board, b) || board[a.row][a.col] === board[b.row][b.col]) return;
+                    const groups = findMatches(swapCells(board, a, b));
+                    const size = groups.reduce((sum, group) => sum + group.cells.length, 0);
+                    if (size > 0 && (best === null || size > best.size)) {
+                        best = { a, b, size };
+                    }
+                });
+            }
+        }
+
+        return best;
+    }
+
+    function hasPossibleMove(board) {
+        return findBestMove(board) !== null;
+    }
+
+    function pickFruits(rng, allFruits, count) {
+        const pool = allFruits.slice();
+        for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(rng() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        return pool.slice(0, count);
+    }
+
+    // Requires at least 3 fruits so every cell has a fruit that does not complete a line.
+    function createBoard(rng, fruits) {
+        for (;;) {
+            const board = [];
+            for (let row = 0; row < ROWS; row++) {
+                const line = [];
+                board.push(line);
+                for (let col = 0; col < COLS; col++) {
+                    const options = fruits.filter(fruit => {
+                        const makesRow = col >= 2 && line[col - 1] === fruit && line[col - 2] === fruit;
+                        const makesColumn = row >= 2 && board[row - 1][col] === fruit && board[row - 2][col] === fruit;
+                        return !makesRow && !makesColumn;
+                    });
+                    line.push(randomFruit(rng, options));
+                }
+            }
+            if (hasPossibleMove(board)) return board;
+        }
+    }
+
+    function shuffle(board, rng) {
+        const rows = board.length;
+        const cols = board[0].length;
+        const flat = board.flat();
+
+        for (let attempt = 0; attempt < 100; attempt++) {
+            const items = flat.slice();
+            for (let i = items.length - 1; i > 0; i--) {
+                const j = Math.floor(rng() * (i + 1));
+                [items[i], items[j]] = [items[j], items[i]];
+            }
+            const next = [];
+            for (let row = 0; row < rows; row++) {
+                next.push(items.slice(row * cols, (row + 1) * cols));
+            }
+            if (findMatches(next).length === 0 && hasPossibleMove(next)) return next;
+        }
+
+        return createBoard(rng, Array.from(new Set(flat)));
+    }
+
     const Board = {
         ROWS,
         COLS,
@@ -183,7 +262,12 @@
         findMatches,
         clearAndCollapse,
         cascade,
-        resolveMove
+        resolveMove,
+        findBestMove,
+        hasPossibleMove,
+        pickFruits,
+        createBoard,
+        shuffle
     };
 
     if (typeof module !== 'undefined' && module.exports) {

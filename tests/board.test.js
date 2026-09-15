@@ -129,3 +129,52 @@ test('resolveMove plays out the full chain reaction', () => {
     assert.deepEqual(boardToLines(result.finalBoard), ['zyz', 'yqm', 'xno', 'xbd', 'efg']);
     assert.deepEqual(boardToLines(board), CHAIN_BOARD);
 });
+
+test('findBestMove picks the swap that pops the most cells', () => {
+    const board = parseBoard(['abaac', 'difgh', 'ijiik', 'lmnop']);
+    assert.deepEqual(Board.findBestMove(board), { a: { row: 1, col: 1 }, b: { row: 2, col: 1 }, size: 4 });
+});
+
+test('findBestMove keeps the first move found on a tie', () => {
+    const board = parseBoard(['abaa', 'ecee']);
+    assert.deepEqual(Board.findBestMove(board), { a: { row: 0, col: 0 }, b: { row: 0, col: 1 }, size: 3 });
+});
+
+test('findBestMove returns null and hasPossibleMove is false when no swap matches', () => {
+    const board = parseBoard(['abcd', 'cdab', 'abcd']);
+    assert.equal(Board.findBestMove(board), null);
+    assert.equal(Board.hasPossibleMove(board), false);
+    assert.equal(Board.hasPossibleMove(parseBoard(['abaa'])), true);
+});
+
+test('pickFruits returns the requested number of distinct fruits', () => {
+    const all = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+    const picked = Board.pickFruits(seededRng(1), all, 6);
+    assert.equal(picked.length, 6);
+    assert.equal(new Set(picked).size, 6);
+    picked.forEach(fruit => assert.ok(all.includes(fruit)));
+});
+
+test('createBoard makes an 8x7 board with no matches and at least one move', () => {
+    const fruits = ['a', 'b', 'c', 'd', 'e', 'f'];
+    for (let seed = 1; seed <= 20; seed++) {
+        const board = Board.createBoard(seededRng(seed), fruits);
+        assert.equal(board.length, Board.ROWS);
+        board.forEach(row => assert.equal(row.length, Board.COLS));
+        board.flat().forEach(fruit => assert.ok(fruits.includes(fruit)));
+        assert.deepEqual(Board.findMatches(board), []);
+        assert.equal(Board.hasPossibleMove(board), true);
+    }
+});
+
+test('shuffle keeps the same fruits, leaves no matches, and has a move', () => {
+    const fruits = ['a', 'b', 'c', 'd', 'e', 'f'];
+    const countFruits = board => board.flat().sort().join('');
+    for (let seed = 1; seed <= 10; seed++) {
+        const board = Board.createBoard(seededRng(seed), fruits);
+        const shuffled = Board.shuffle(board, seededRng(seed + 100));
+        assert.equal(countFruits(shuffled), countFruits(board));
+        assert.deepEqual(Board.findMatches(shuffled), []);
+        assert.equal(Board.hasPossibleMove(shuffled), true);
+    }
+});
