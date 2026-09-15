@@ -1,7 +1,7 @@
 {
   "name": "Fruit Market",
   "short_name": "FruitMarket",
-  "description": "Touch 3 same fruits to remove them - Puzzle game",
+  "description": "Swipe fruits to line up 3 or more - Puzzle game",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#667eea",

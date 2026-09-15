@@ -499,7 +499,7 @@ function startTimer() {
     
     timerInterval = setInterval(() => {
         timeLeft--;
-        const percentage = (timeLeft / 30) * 100;
+        const percentage = (timeLeft / GAME_DURATION) * 100;
         timerBar.style.width = percentage + '%';
         
         // Siren effect in last 5 seconds
@@ -510,7 +510,13 @@ function startTimer() {
         }
         
         if (timeLeft <= 0) {
-            endGame();
+            clearInterval(timerInterval);
+            if (isAnimating) {
+                // Let the running move and its chain finish, then finishTurn() ends the game
+                timeUp = true;
+            } else {
+                endGame();
+            }
         }
     }, 1000);
 }
@@ -523,7 +529,7 @@ function endGame() {
     
     // Check if this is a new personal best score (worth submitting to leaderboard)
     const isNewPersonalBest = score > highestScore;
-    const meetsMinimumThreshold = score >= 5000; // Minimum score threshold for leaderboard
+    const meetsMinimumThreshold = score >= LEADERBOARD_MIN_SCORE;
     
     // Show ranking submission only if it's both a new personal best AND meets minimum threshold
     if (isNewPersonalBest && meetsMinimumThreshold) {
@@ -664,8 +670,12 @@ function actuallyStartGame() {
 }
 
 function restartGame() {
-    // Stop current game session
+    // Stop current game session; any running move animation sees the new session and stops
     gameRunning = false;
+    gameSession++;
+    isAnimating = false;
+    timeUp = false;
+    pointerStart = null;
     clearInterval(timerInterval);
     
     // Stop background music
