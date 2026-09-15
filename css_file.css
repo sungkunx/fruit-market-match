@@ -227,19 +227,19 @@ body.combo-bg-3 {
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    grid-template-rows: repeat(10, 1fr);
-    gap: 5px;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    gap: 4px;
     width: 100%;
-    max-width: 315px;
-    height: auto;
-    max-height: 65vh;
+    max-width: 360px;
     background: rgba(255, 255, 255, 0.1);
-    padding: 12px;
+    padding: 10px;
     border-radius: 18px;
     backdrop-filter: blur(5px);
     box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
     transition: all 0.3s ease;
+    overflow: hidden;
+    touch-action: none;
 }
 
 .grid.combo-glow-1 {
@@ -291,19 +291,26 @@ body.combo-bg-3 {
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    transition: all 0.2s ease;
     position: relative;
-    overflow: hidden;
     aspect-ratio: 1/1;
-    min-height: 35px;
-    max-height: 50px;
+}
+
+.fruit {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
 }
 
 .fruit-image {
     width: 95%;
     height: 95%;
     object-fit: contain;
-    transition: transform 0.2s ease;
+    pointer-events: none;
+    -webkit-user-drag: none;
     animation: fruitIdle 3s infinite ease-in-out;
 }
 
@@ -315,36 +322,8 @@ body.combo-bg-3 {
     100% { transform: rotate(0deg) scale(1); }
 }
 
-.cell:active {
-    transform: scale(0.95);
-}
-
-.cell.selected {
-    background: linear-gradient(45deg, #FFD700, #FFA500);
-    transform: scale(1.05);
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
-    z-index: 10;
-}
-
-.cell.removing {
-    animation: removeAnimation 0.8s ease-in;
-    z-index: 10;
-    pointer-events: none;
-}
-
-@keyframes removeAnimation {
-    0% {
-        transform: translateY(0) scale(1);
-        opacity: 1;
-    }
-    30% {
-        transform: translateY(0) scale(1.1);
-        opacity: 0.9;
-    }
-    100% {
-        transform: translateY(200px) scale(0.7);
-        opacity: 0;
-    }
+.fruit.moving {
+    z-index: 2;
 }
 
 .game-over {

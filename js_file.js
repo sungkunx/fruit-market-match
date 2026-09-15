@@ -1,19 +1,29 @@
-const fruits = ['apple', 'orange', 'banana', 'grape', 'strawberry', 'kiwi', 'cherry'];
-let grid = [];
-let selectedCells = [];
+const ALL_FRUITS = ['apple', 'orange', 'banana', 'grape', 'strawberry', 'kiwi', 'cherry'];
+const FRUITS_PER_GAME = 6;
+const GAME_DURATION = 30;
+const LEADERBOARD_MIN_SCORE = 5000;
+const SWIPE_THRESHOLD = 0.3; // fraction of a cell the finger must travel to count as a swipe
+
+let board = [];
+let activeFruits = [];
+let cellElements = [];
 let score = 0;
 let multiplier = 1.0;
-let timeLeft = 30;
+let timeLeft = GAME_DURATION;
 let gameRunning = false;
 let timerInterval;
 let lastMatchedFruit = null;
 let comboCount = 0;
 let audioContext;
 let backgroundMusic;
-let noteIndex = 0; // Track current note for 3-cell selection
 let lastScore = 0;
 let maxMultiplier = 1.0;
 let highestScore = 0;
+let isAnimating = false;
+let timeUp = false;
+let gameSession = 0;
+let pointerStart = null;
+let comboTextTimer;
 
 // Initialize audio context
 function initAudio() {
@@ -54,33 +64,6 @@ function createBackgroundMusic() {
         start: () => { isPlaying = true; playNote(); },
         stop: () => { isPlaying = false; }
     };
-}
-
-// Create musical note sound for 3-cell selection
-function playNoteSound() {
-    if (!audioContext) return;
-
-    // Musical scale: C, D, E, F, G, A, B, C (octave)
-    const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
-    
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.setValueAtTime(notes[noteIndex], audioContext.currentTime);
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.05);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.3);
-    
-    // Move to next note, cycle back to 0 after reaching the end
-    noteIndex = (noteIndex + 1) % notes.length;
 }
 
 // 효과음 생성 (뾱 소리)
@@ -154,201 +137,89 @@ function playFailSound() {
     oscillator.stop(audioContext.currentTime + 0.5);
 }
 
-function initializeGrid() {
+function fruitSrc(fruit, frame) {
+    return `img/fruit_${fruit}_${frame}.png`;
+}
+
+// Builds the 8x7 cell elements once. Each cell holds a .fruit wrapper (moved by
+// animations) around the fruit image (which keeps its idle CSS animation).
+function buildGrid() {
     const gridElement = document.getElementById('grid');
     gridElement.innerHTML = '';
-    grid = [];
-    
-    // Create grid with fruits only
-    const gridItems = [];
-    
-    // Add 50 regular fruits
-    for (let i = 0; i < 50; i++) {
-        const fruit = fruits[Math.floor(Math.random() * fruits.length)];
-        gridItems.push(fruit);
-    }
-    
-    // Create cells
-    for (let i = 0; i < 50; i++) {
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.dataset.index = i;
-        
-        const item = gridItems[i];
-        const img = document.createElement('img');
-        img.src = `img/fruit_${item}_001.png`;
-        img.className = 'fruit-image';
-        img.dataset.fruit = item;
-        cell.appendChild(img);
-        cell.onclick = () => selectCell(i);
-        
-        gridElement.appendChild(cell);
-        grid.push(item);
+    cellElements = [];
+
+    for (let row = 0; row < Board.ROWS; row++) {
+        const rowElements = [];
+        for (let col = 0; col < Board.COLS; col++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'fruit';
+
+            const img = document.createElement('img');
+            img.className = 'fruit-image';
+            img.alt = '';
+            img.draggable = false;
+
+            wrapper.appendChild(img);
+            cell.appendChild(wrapper);
+            gridElement.appendChild(cell);
+            rowElements.push(cell);
+        }
+        cellElements.push(rowElements);
     }
 }
 
-function selectCell(index) {
-    if (!gameRunning) return;
-    
-    // 터치 효과음 재생
-    playPopSound();
-    
-    const cell = document.querySelector(`[data-index="${index}"]`);
-    const img = cell.querySelector('.fruit-image');
-    const fruit = grid[index];
-    
-    if (selectedCells.includes(index)) {
-        // 이미 선택된 셀 클릭 시 선택 해제
-        selectedCells = selectedCells.filter(i => i !== index);
-        cell.classList.remove('selected');
-        // 기본 프레임으로 되돌리기
-        img.src = `img/fruit_${fruit}_001.png`;
-    } else if (selectedCells.length < 3) {
-        // 새로운 셀 선택
-        selectedCells.push(index);
-        cell.classList.add('selected');
-        // 선택 프레임으로 변경
-        img.src = `img/fruit_${fruit}_002.png`;
-        
-        if (selectedCells.length === 3) {
-            playNoteSound();
-            checkMatch();
+function fruitWrapper(cell) {
+    return cellElements[cell.row][cell.col].firstChild;
+}
+
+function fruitImage(cell) {
+    return fruitWrapper(cell).firstChild;
+}
+
+function setCellFruit(cell, fruit, frame = '001') {
+    const img = fruitImage(cell);
+    img.src = fruitSrc(fruit, frame);
+    img.dataset.fruit = fruit;
+}
+
+function setCellFrame(cell, frame) {
+    const img = fruitImage(cell);
+    img.src = fruitSrc(img.dataset.fruit, frame);
+}
+
+function clearAnimations(cell) {
+    const wrapper = fruitWrapper(cell);
+    wrapper.getAnimations().forEach(animation => animation.cancel());
+    wrapper.classList.remove('moving');
+}
+
+function renderBoard() {
+    for (let row = 0; row < Board.ROWS; row++) {
+        for (let col = 0; col < Board.COLS; col++) {
+            const cell = { row, col };
+            clearAnimations(cell);
+            setCellFruit(cell, board[row][col]);
         }
     }
 }
 
-function isValidMatch(selectedFruits) {
-    // Check if all fruits are the same
-    return selectedFruits.every(fruit => fruit === selectedFruits[0]);
+function newBoard() {
+    activeFruits = Board.pickFruits(Math.random, ALL_FRUITS, FRUITS_PER_GAME);
+    board = Board.createBoard(Math.random, activeFruits);
+    renderBoard();
 }
 
-function checkMatch() {
-    const selectedFruits = selectedCells.map(index => grid[index]);
-    
-    // Check if it's a valid match (considering jokers)
-    const isMatch = isValidMatch(selectedFruits);
-    
-    if (isMatch) {
-        // Success sound effect
-        playSuccessSound();
-        
-        // Get the matched fruit
-        const matchedFruit = selectedFruits[0];
-        
-        // 성공: 점수 추가 및 배수 증가
-        const baseScore = 100;
-        const earnedScore = Math.floor(baseScore * multiplier);
-        score += earnedScore;
-        
-        // Check consecutive same fruit matching
-        if (lastMatchedFruit === matchedFruit) {
-            // Same fruit combo: +0.5x multiplier and increase combo count
-            comboCount++;
-            multiplier += 0.5;
-            showComboEffect(`COMBO x${comboCount}! +0.5x`);
-            updateComboDisplay();
-        } else {
-            // Different fruit match: +0.1x multiplier and reset combo
-            comboCount = 1;
-            multiplier += 0.1;
-            updateComboDisplay();
-        }
-        
-        // Track maximum multiplier
-        if (multiplier > maxMultiplier) {
-            maxMultiplier = multiplier;
-        }
-        
-        lastMatchedFruit = matchedFruit;
-        updateDisplay();
-        removeCells();
-    } else {
-        // 실패 효과음
-        playFailSound();
-        
-        // Failed: Reset all cells, multiplier, and combo
-        multiplier = 1.0;
-        lastMatchedFruit = null;
-        comboCount = 0;
-        updateDisplay();
-        updateComboDisplay();
-        resetAllCells();
-        // 그리드 리프레시 후 실패 표정 표시
-        setTimeout(() => {
-            showFailedExpression();
-        }, 350);
-    }
-    
-    // Reset selection
-    selectedCells.forEach(index => {
-        const cell = document.querySelector(`[data-index="${index}"]`);
-        cell.classList.remove('selected');
-        if (!isMatch) {
-            // 실패한 경우가 아니라면 기본 프레임으로 되돌리기
-            const img = cell.querySelector('.fruit-image');
-            const fruit = grid[index];
-            img.src = `img/fruit_${fruit}_001.png`;
-        }
-    });
-    selectedCells = [];
-}
-
-function removeCells() {
-    selectedCells.forEach(index => {
-        const cell = document.querySelector(`[data-index="${index}"]`);
-        const img = cell.querySelector('.fruit-image');
-        const fruit = grid[index];
-        
-        // 매칭 성공 프레임으로 변경
-        img.src = `img/fruit_${fruit}_003.png`;
-        cell.classList.add('removing');
-        
-        setTimeout(() => {
-            const newItem = getRandomItem();
-            grid[index] = newItem;
-            img.src = `img/fruit_${newItem}_001.png`;
-            img.dataset.fruit = newItem;
-            cell.classList.remove('removing');
-        }, 800);
-    });
-}
-
-function getRandomItem() {
-    // Return a random fruit
-    return fruits[Math.floor(Math.random() * fruits.length)];
-}
-
-function resetAllCells() {
-    const gridElement = document.getElementById('grid');
-    gridElement.style.animation = 'none';
-    gridElement.offsetHeight; // 리플로우 강제 실행
-    gridElement.style.animation = 'removeAnimation 0.3s ease-out';
-    
-    setTimeout(() => {
-        // Reset grid with fruits only
-        const gridItems = [];
-        
-        // Add 50 regular fruits
-        for (let i = 0; i < 50; i++) {
-            const fruit = fruits[Math.floor(Math.random() * fruits.length)];
-            gridItems.push(fruit);
-        }
-        
-        // Update grid
-        for (let i = 0; i < 50; i++) {
-            grid[i] = gridItems[i];
-            const cell = document.querySelector(`[data-index="${i}"]`);
-            const img = cell.querySelector('.fruit-image');
-            img.src = `img/fruit_${gridItems[i]}_001.png`;
-            img.dataset.fruit = gridItems[i];
-        }
-        
-        gridElement.style.animation = '';
-    }, 300);
+function updateScoreDisplay() {
+    document.getElementById('score').textContent = score;
 }
 
 function updateDisplay() {
-    document.getElementById('score').textContent = score;
+    updateScoreDisplay();
     const multiplierElement = document.getElementById('multiplier');
     multiplierElement.textContent = `x${multiplier.toFixed(1)}`;
     
@@ -539,16 +410,19 @@ function showCountdown() {
 }
 
 function actuallyStartGame() {
+    gameSession++;
     score = 0;
     multiplier = 1.0;
     maxMultiplier = 1.0; // Reset max multiplier for new game
-    timeLeft = 30;
+    timeLeft = GAME_DURATION;
     gameRunning = true;
-    selectedCells = [];
+    isAnimating = false;
+    timeUp = false;
+    pointerStart = null;
     lastMatchedFruit = null;
     comboCount = 0;
-    
-    initializeGrid();
+
+    newBoard();
     updateDisplay();
     updateComboDisplay();
     
@@ -576,8 +450,7 @@ function restartGame() {
     score = 0;
     multiplier = 1.0;
     maxMultiplier = 1.0;
-    timeLeft = 30;
-    selectedCells = [];
+    timeLeft = GAME_DURATION;
     lastMatchedFruit = null;
     comboCount = 0;
     
@@ -630,26 +503,6 @@ function loadGameData() {
 function updateStartScreenStats() {
     document.getElementById('lastScore').textContent = lastScore;
     document.getElementById('highestScore').textContent = highestScore;
-}
-
-function showFailedExpression() {
-    // 모든 과일을 실패 표정(4번 프레임)으로 변경
-    for (let i = 0; i < 50; i++) {
-        const cell = document.querySelector(`[data-index="${i}"]`);
-        const img = cell.querySelector('.fruit-image');
-        const fruit = grid[i];
-        img.src = `img/fruit_${fruit}_004.png`;
-    }
-    
-    // 0.5초 후 기본 프레임으로 되돌리기
-    setTimeout(() => {
-        for (let i = 0; i < 50; i++) {
-            const cell = document.querySelector(`[data-index="${i}"]`);
-            const img = cell.querySelector('.fruit-image');
-            const fruit = grid[i];
-            img.src = `img/fruit_${fruit}_001.png`;
-        }
-    }, 500);
 }
 
 function updateComboDisplay() {
@@ -1048,7 +901,8 @@ document.addEventListener('keydown', function(e) {
 
 // Initialize
 loadGameData();
-initializeGrid();
+buildGrid();
+newBoard();
 updateDisplay();
 updateComboDisplay();
 initializeTitleAnimations();
