@@ -224,7 +224,7 @@ function animate(element, keyframes, options) {
 
 // Distance in layout pixels between neighboring cells (cells are square).
 function cellPitch() {
-    return cellElements[0][1].offsetLeft - cellElements[0][0].offsetLeft;
+    return (cellElements[0][Board.COLS - 1].offsetLeft - cellElements[0][0].offsetLeft) / (Board.COLS - 1);
 }
 
 function animateSwap(a, b, reverse = false) {
@@ -314,6 +314,7 @@ function cellFromEvent(event) {
 
 function onGridPointerDown(event) {
     if (!canAcceptInput() || pointerStart) return;
+    if (event.button !== 0) return;
     const cell = cellFromEvent(event);
     if (!cell) return;
 
@@ -358,6 +359,7 @@ function setupGridInput() {
     gridElement.addEventListener('pointermove', onGridPointerMove);
     gridElement.addEventListener('pointerup', onGridPointerEnd);
     gridElement.addEventListener('pointercancel', onGridPointerEnd);
+    gridElement.addEventListener('lostpointercapture', onGridPointerEnd);
 }
 
 // a: the cell the player dragged, b: the neighbor it was pushed into.

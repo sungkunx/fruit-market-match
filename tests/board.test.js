@@ -178,3 +178,74 @@ test('shuffle keeps the same fruits, leaves no matches, and has a move', () => {
         assert.equal(Board.hasPossibleMove(shuffled), true);
     }
 });
+
+// The UI's animateFalls only rewrites destination cells, so every step returned by
+// resolveMove must obey this contract: starting from the board before the step
+// (swappedBoard for step 0, the previous step's board afterwards), clearing every
+// `cleared` cell to null and then applying `falls` and `spawns` (read source values
+// from the pre-step board, write them into a result grid) must reproduce `step.board`
+// exactly, with every other cell unchanged.
+function replayStep(preBoard, step) {
+    const result = preBoard.map(row => row.slice());
+    const clearedKeys = new Set();
+
+    step.cleared.forEach(cell => {
+        const key = `${cell.row},${cell.col}`;
+        assert.equal(clearedKeys.has(key), false, `cell ${key} cleared twice in one step`);
+        clearedKeys.add(key);
+        result[cell.row][cell.col] = null;
+    });
+
+    const filledKeys = new Set();
+    step.falls.forEach(fall => {
+        result[fall.to.row][fall.to.col] = preBoard[fall.from.row][fall.from.col];
+        filledKeys.add(`${fall.to.row},${fall.to.col}`);
+    });
+    step.spawns.forEach(spawn => {
+        result[spawn.to.row][spawn.to.col] = spawn.fruit;
+        filledKeys.add(`${spawn.to.row},${spawn.to.col}`);
+    });
+
+    clearedKeys.forEach(key => {
+        assert.ok(filledKeys.has(key), `cleared cell ${key} was never refilled by a fall or spawn`);
+    });
+
+    return result;
+}
+
+test('resolveMove steps replay correctly for many random games (property test)', () => {
+    const fruits = ['a', 'b', 'c', 'd', 'e', 'f'];
+    const seedCount = 40;
+    const maxMoves = 20;
+
+    for (let seed = 1; seed <= seedCount; seed++) {
+        const rng = seededRng(seed);
+        let board = Board.createBoard(rng, fruits);
+
+        for (let moveIndex = 0; moveIndex < maxMoves; moveIndex++) {
+            const move = Board.findBestMove(board);
+            if (!move) {
+                board = Board.shuffle(board, rng);
+                continue;
+            }
+
+            const result = Board.resolveMove(board, move.a, move.b, rng, fruits);
+            assert.equal(result.valid, true, `seed ${seed} move ${moveIndex}: expected a valid move`);
+            assert.ok(result.steps.length > 0, `seed ${seed} move ${moveIndex}: expected at least one step`);
+
+            let preBoard = result.swappedBoard;
+            result.steps.forEach((step, index) => {
+                assert.equal(step.kind, 'match');
+                assert.equal(step.chain, index + 1);
+                const replayed = replayStep(preBoard, step);
+                assert.deepEqual(replayed, step.board, `seed ${seed} move ${moveIndex} step ${index}: replay mismatch`);
+                preBoard = step.board;
+            });
+
+            assert.deepEqual(result.finalBoard, result.steps[result.steps.length - 1].board);
+            assert.deepEqual(Board.findMatches(result.finalBoard), []);
+
+            board = result.finalBoard;
+        }
+    }
+});
