@@ -3,6 +3,8 @@ const FRUITS_PER_GAME = 6;
 const GAME_DURATION = 30;
 const LEADERBOARD_MIN_SCORE = 5000;
 const SWIPE_THRESHOLD = 0.3; // fraction of a cell the finger must travel to count as a swipe
+const TIMER_TICK_MS = 100;
+const HURRY_TIME = 5; // seconds left when the warning and the faster music start
 
 let board = [];
 let activeFruits = [];
@@ -418,6 +420,10 @@ async function playSteps(steps, stepScores, session) {
 
         score += stepScores[i];
         updateScoreDisplay();
+        const secondsAdded = addTime(Scoring.stepTimeBonus(step));
+        if (secondsAdded > 0) {
+            showTimeBonus(secondsAdded);
+        }
         if (step.kind === 'match' && step.chain >= 2) {
             showComboEffect(`CHAIN x${step.chain}!`);
         }
@@ -495,22 +501,30 @@ function showComboEffect(text) {
     }, 1500);
 }
 
-function startTimer() {
+function round1(value) {
+    return Math.round(value * 10) / 10;
+}
+
+function updateTimerBar() {
+    const ratio = timeLeft / GAME_DURATION;
     const timerBar = document.getElementById('timerBar');
-    const sirenWarning = document.getElementById('sirenWarning');
-    
+    timerBar.style.width = ratio * 100 + '%';
+    timerBar.classList.toggle('time-mid', ratio <= 0.5 && ratio > 0.25);
+    timerBar.classList.toggle('time-low', ratio <= 0.25);
+}
+
+// The warning follows the clock both ways: time bonuses can push it back above 5s.
+function updateHurryState() {
+    const hurrying = timeLeft <= HURRY_TIME && timeLeft > 0;
+    document.getElementById('sirenWarning').classList.toggle('siren-active', hurrying);
+}
+
+function startTimer() {
     timerInterval = setInterval(() => {
-        timeLeft--;
-        const percentage = (timeLeft / GAME_DURATION) * 100;
-        timerBar.style.width = percentage + '%';
-        
-        // Siren effect in last 5 seconds
-        if (timeLeft <= 5 && timeLeft > 0) {
-            sirenWarning.classList.add('siren-active');
-        } else {
-            sirenWarning.classList.remove('siren-active');
-        }
-        
+        timeLeft = Math.max(0, round1(timeLeft - TIMER_TICK_MS / 1000));
+        updateTimerBar();
+        updateHurryState();
+
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
             if (isAnimating) {
@@ -520,7 +534,35 @@ function startTimer() {
                 endGame();
             }
         }
-    }, 1000);
+    }, TIMER_TICK_MS);
+}
+
+// Gives seconds back for a match, never past the starting time.
+// Returns how many seconds were actually added.
+function addTime(seconds) {
+    if (!gameRunning || timeUp || timeLeft <= 0 || seconds <= 0) return 0;
+
+    const next = Math.min(GAME_DURATION, round1(timeLeft + seconds));
+    const added = round1(next - timeLeft);
+    timeLeft = next;
+    updateTimerBar();
+    updateHurryState();
+    return added;
+}
+
+function showTimeBonus(seconds) {
+    const timerContainer = document.querySelector('.timer-container');
+    const label = document.createElement('div');
+    label.className = 'time-bonus';
+    label.textContent = `+${seconds}s`;
+    label.style.top = timerContainer.offsetTop + 'px';
+    document.querySelector('.game-container').appendChild(label);
+    setTimeout(() => label.remove(), 800);
+
+    const timerBar = document.getElementById('timerBar');
+    timerBar.classList.remove('timer-flash');
+    void timerBar.offsetWidth; // restart the flash animation
+    timerBar.classList.add('timer-flash');
 }
 
 function endGame() {
@@ -661,9 +703,9 @@ function actuallyStartGame() {
     updateDisplay();
     updateComboDisplay();
     
-    const timerBar = document.getElementById('timerBar');
-    timerBar.style.width = '100%';
-    
+    updateTimerBar();
+    updateHurryState();
+
     // Start background music
     backgroundMusic = createBackgroundMusic();
     backgroundMusic.start();

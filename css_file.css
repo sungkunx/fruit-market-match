@@ -901,3 +901,38 @@ body.combo-bg-3 {
     font-size: 18px;
 }
 
+.timer-bar.time-mid {
+    background: #FFC53D;
+}
+
+.timer-bar.time-low {
+    background: #E8413B;
+}
+
+.timer-bar.timer-flash {
+    animation: timerFlash 0.3s ease-out;
+}
+
+@keyframes timerFlash {
+    0%, 100% { filter: brightness(1); }
+    40% { filter: brightness(1.8); }
+}
+
+.time-bonus {
+    position: absolute;
+    left: 50%;
+    font-size: 20px;
+    font-weight: bold;
+    color: #6DB33F;
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    z-index: 50;
+    animation: timeBonusFloat 0.8s ease-out forwards;
+}
+
+@keyframes timeBonusFloat {
+    0% { transform: translate(120px, 0) scale(0.7); opacity: 0; }
+    25% { transform: translate(120px, -10px) scale(1.1); opacity: 1; }
+    100% { transform: translate(120px, -34px) scale(1); opacity: 0; }
+}
+
