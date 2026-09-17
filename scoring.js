@@ -50,7 +50,21 @@
         };
     }
 
-    const Scoring = { createScoreState, baseScore, matchStepScore, scoreMove };
+    // Seconds added to the clock for a popped group.
+    function timeBonusForSize(size) {
+        if (size >= 5) return 2;
+        if (size === 4) return 1;
+        return 0.5;
+    }
+
+    // Seconds a single cascade step gives back. Item steps (phase 2) give none.
+    function stepTimeBonus(step) {
+        if (step.kind !== 'match') return 0;
+        const total = step.groups.reduce((sum, group) => sum + timeBonusForSize(group.cells.length), 0);
+        return Math.round(total * 10) / 10;
+    }
+
+    const Scoring = { createScoreState, baseScore, matchStepScore, scoreMove, timeBonusForSize, stepTimeBonus };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = Scoring;

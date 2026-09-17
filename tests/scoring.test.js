@@ -87,3 +87,20 @@ test('scoreMove rounds the multiplier to one decimal place', () => {
     });
     assert.equal(current.multiplier, 1.3);
 });
+
+test('timeBonusForSize gives more seconds for bigger groups', () => {
+    assert.equal(Scoring.timeBonusForSize(3), 0.5);
+    assert.equal(Scoring.timeBonusForSize(4), 1);
+    assert.equal(Scoring.timeBonusForSize(5), 2);
+    assert.equal(Scoring.timeBonusForSize(6), 2);
+});
+
+test('stepTimeBonus adds up every group in the step', () => {
+    assert.equal(Scoring.stepTimeBonus(step(1, [group('apple', 3)])), 0.5);
+    assert.equal(Scoring.stepTimeBonus(step(2, [group('apple', 4), group('kiwi', 3)])), 1.5);
+    assert.equal(Scoring.stepTimeBonus(step(1, [group('apple', 3), group('kiwi', 3), group('grape', 3)])), 1.5);
+});
+
+test('stepTimeBonus gives nothing for an item step', () => {
+    assert.equal(Scoring.stepTimeBonus({ kind: 'item', chain: 0, groups: [] }), 0);
+});
