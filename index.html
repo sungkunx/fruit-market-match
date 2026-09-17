@@ -15,6 +15,7 @@
 </head>
 <body>
     <div class="start-screen" id="startScreen">
+        <button class="sound-btn start-sound-btn" onclick="toggleSound()" aria-label="Toggle sound" aria-pressed="false">🔊</button>
         <h1 class="start-title">
             <img src="img/Fruit-Market-title.png" class="main-title-image" alt="Fruit Market">
         </h1>
@@ -62,6 +63,7 @@
                 <div class="combo-counter" id="comboCounter">0</div>
                 <div class="multiplier" id="multiplier">x1.0</div>
             </div>
+            <button class="sound-btn" onclick="toggleSound()" aria-label="Toggle sound" aria-pressed="false">🔊</button>
             <button class="restart-btn-game" onclick="restartGame()">🏠</button>
         </div>
         
@@ -148,6 +150,7 @@
 
     <!-- Firebase Configuration (load before main script) -->
     <script type="module" src="firebase-config.js"></script>
+    <script src="audio.js"></script>
     <script src="board.js"></script>
     <script src="scoring.js"></script>
     <script src="js_file.js"></script>

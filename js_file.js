@@ -16,8 +16,6 @@ let gameRunning = false;
 let timerInterval;
 let lastMatchedFruit = null;
 let comboCount = 0;
-let audioContext;
-let backgroundMusic;
 let lastScore = 0;
 let maxMultiplier = 1.0;
 let highestScore = 0;
@@ -27,117 +25,18 @@ let gameSession = 0;
 let pointerStart = null;
 let comboTextTimer;
 
-// Initialize audio context
-function initAudio() {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-}
-
-// Create background music (simple melody)
-function createBackgroundMusic() {
-    const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00]; // C, D, E, F, G, A
-    let noteIndex = 0;
-    let isPlaying = true;
-
-    function playNote() {
-        if (!isPlaying || !gameRunning) return;
-
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.setValueAtTime(notes[noteIndex], audioContext.currentTime);
-        oscillator.type = 'sine';
-        
-        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.1);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.8);
-        
-        noteIndex = (noteIndex + 1) % notes.length;
-        
-        setTimeout(playNote, 1000);
-    }
-
-    return {
-        start: () => { isPlaying = true; playNote(); },
-        stop: () => { isPlaying = false; }
-    };
-}
-
-// 효과음 생성 (뾱 소리)
-function playPopSound() {
-    if (!audioContext) return;
-
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    // 뾱 소리를 위한 주파수 변화
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
-    
-    oscillator.type = 'square';
-    
-    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.1);
-}
-
-// 성공 효과음 (연쇄 단계마다 2음씩 높아짐)
-function playSuccessSound(chain = 1) {
-    if (!audioContext) return;
-
-    const pitch = Math.pow(2, ((chain - 1) * 2) / 12);
-    const notes = [523.25, 659.25, 783.99].map(freq => freq * pitch); // C5, E5, G5
-    notes.forEach((freq, index) => {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.setValueAtTime(freq, audioContext.currentTime + index * 0.1);
-        oscillator.type = 'sine';
-        
-        gainNode.gain.setValueAtTime(0, audioContext.currentTime + index * 0.1);
-        gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + index * 0.1 + 0.05);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * 0.1 + 0.3);
-        
-        oscillator.start(audioContext.currentTime + index * 0.1);
-        oscillator.stop(audioContext.currentTime + index * 0.1 + 0.3);
+function updateSoundButtons() {
+    const label = GameAudio.isMuted() ? '🔇' : '🔊';
+    document.querySelectorAll('.sound-btn').forEach(button => {
+        button.textContent = label;
+        button.setAttribute('aria-pressed', GameAudio.isMuted() ? 'true' : 'false');
     });
 }
 
-// 실패 효과음
-function playFailSound() {
-    if (!audioContext) return;
-
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
-    oscillator.frequency.linearRampToValueAtTime(100, audioContext.currentTime + 0.5);
-    
-    oscillator.type = 'sawtooth';
-    
-    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.1);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.5);
+function toggleSound() {
+    GameAudio.init();
+    GameAudio.setMuted(!GameAudio.isMuted());
+    updateSoundButtons();
 }
 
 function fruitSrc(fruit, frame) {
@@ -323,7 +222,7 @@ function onGridPointerDown(event) {
     event.preventDefault();
     document.getElementById('grid').setPointerCapture(event.pointerId);
     pointerStart = { pointerId: event.pointerId, cell, x: event.clientX, y: event.clientY };
-    playPopSound();
+    GameAudio.playPop();
     setCellFrame(cell, '002');
 }
 
@@ -381,7 +280,7 @@ async function handleSwap(a, b) {
         if (session !== gameSession) return;
         clearAnimations(a);
         clearAnimations(b);
-        playFailSound();
+        GameAudio.playFail();
         showFailedExpression([a, b]);
         await finishTurn(session);
         return;
@@ -414,7 +313,7 @@ async function handleSwap(a, b) {
 async function playSteps(steps, stepScores, session) {
     for (let i = 0; i < steps.length; i++) {
         const step = steps[i];
-        playSuccessSound(step.chain);
+        GameAudio.playSuccess(step.chain);
         await animatePop(step.cleared);
         if (session !== gameSession) return false;
 
@@ -479,12 +378,17 @@ function updateComboEffects() {
     if (multiplier >= 3.0) {
         body.classList.add('combo-bg-3');
         grid.classList.add('combo-glow-3');
+        GameAudio.setIntensity(3);
     } else if (multiplier >= 2.0) {
         body.classList.add('combo-bg-2');
         grid.classList.add('combo-glow-2');
+        GameAudio.setIntensity(2);
     } else if (multiplier >= 1.5) {
         body.classList.add('combo-bg-1');
         grid.classList.add('combo-glow-1');
+        GameAudio.setIntensity(1);
+    } else {
+        GameAudio.setIntensity(0);
     }
 }
 
@@ -517,6 +421,7 @@ function updateTimerBar() {
 function updateHurryState() {
     const hurrying = timeLeft <= HURRY_TIME && timeLeft > 0;
     document.getElementById('sirenWarning').classList.toggle('siren-active', hurrying);
+    GameAudio.setHurry(hurrying);
 }
 
 function startTimer() {
@@ -594,10 +499,7 @@ function endGame() {
     saveGameData();
     updateStartScreenStats();
     
-    // Stop background music
-    if (backgroundMusic) {
-        backgroundMusic.stop();
-    }
+    GameAudio.stopMusic();
 }
 
 // Submit score to Firebase
@@ -649,9 +551,7 @@ function hideSubmitForm() {
 
 function startGame() {
     // Initialize audio (after user gesture)
-    if (!audioContext) {
-        initAudio();
-    }
+    GameAudio.init();
     
     // Hide start screen
     document.getElementById('startScreen').style.display = 'none';
@@ -702,14 +602,13 @@ function actuallyStartGame() {
     newBoard();
     updateDisplay();
     updateComboDisplay();
+    GameAudio.setIntensity(0);
+    GameAudio.setHurry(false);
     
     updateTimerBar();
     updateHurryState();
 
-    // Start background music
-    backgroundMusic = createBackgroundMusic();
-    backgroundMusic.start();
-    
+    GameAudio.startMusic();
     startTimer();
 }
 
@@ -722,10 +621,7 @@ function restartGame() {
     pointerStart = null;
     clearInterval(timerInterval);
     
-    // Stop background music
-    if (backgroundMusic) {
-        backgroundMusic.stop();
-    }
+    GameAudio.stopMusic();
     
     // Reset game state
     score = 0;
@@ -859,12 +755,8 @@ function onDecorationFruitClick(fruitElement) {
     const randomExpression = otherExpressions[Math.floor(Math.random() * otherExpressions.length)];
     
     // 클릭 효과음 재생 (항상 재생)
-    if (!audioContext) {
-        initAudio();
-    }
-    if (audioContext) {
-        playPopSound();
-    }
+    GameAudio.init();
+    GameAudio.playPop();
     
     // 표정 변경
     fruitElement.src = `img/fruit_${fruitType}_${randomExpression}.png`;
@@ -1182,6 +1074,7 @@ document.addEventListener('keydown', function(e) {
 
 // Initialize
 loadGameData();
+updateSoundButtons();
 buildGrid();
 setupGridInput();
 newBoard();
