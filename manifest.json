@@ -4,8 +4,8 @@
   "description": "Swipe fruits to line up 3 or more - Puzzle game",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#667eea",
-  "theme_color": "#667eea",
+  "background_color": "#FFD36E",
+  "theme_color": "#FFD36E",
   "orientation": "portrait",
   "icons": [
     {

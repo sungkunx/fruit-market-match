@@ -88,11 +88,11 @@
 
     function init() {
         if (context) {
-            if (!muted && context.state === 'suspended') context.resume();
+            if (!muted && context.state === 'suspended') context.resume().catch(() => {});
             return;
         }
 
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const AudioContextClass = root.AudioContext || root.webkitAudioContext;
         if (!AudioContextClass) return;
 
         context = new AudioContextClass();
@@ -126,8 +126,12 @@
         if (masterGain) {
             masterGain.gain.setTargetAtTime(muted ? 0 : 1, context.currentTime, 0.01);
         }
-        if (context && !muted && context.state === 'suspended') {
-            context.resume();
+        if (context) {
+            if (muted) {
+                context.suspend().catch(() => {});
+            } else {
+                context.resume().catch(() => {});
+            }
         }
     }
 
@@ -204,6 +208,12 @@
     }
 
     function scheduler() {
+        // A hidden tab throttles this interval; skip the missed beats instead of dumping them at once.
+        if (nextStepTime < context.currentTime) {
+            nextStep = Math.ceil(nextStep / STEPS_PER_BAR) * STEPS_PER_BAR;
+            nextStepTime = context.currentTime + 0.05;
+        }
+
         while (nextStepTime < context.currentTime + SCHEDULE_AHEAD) {
             musicStep(nextStep, intensity).forEach(event => playInstrument(event, nextStepTime));
             nextStepTime += stepDuration();
@@ -233,6 +243,18 @@
 
     function setHurry(on) {
         bpm = on ? HURRY_BPM : NORMAL_BPM;
+    }
+
+    // A hidden tab keeps the AudioContext clock running while throttling our
+    // interval; suspend it outright so there is nothing for the scheduler to
+    // catch up on when the tab comes back.
+    function setPageHidden(hidden) {
+        if (!context) return;
+        if (hidden) {
+            context.suspend().catch(() => {});
+        } else if (!muted) {
+            context.resume().catch(() => {});
+        }
     }
 
     function playPop() {
@@ -266,6 +288,7 @@
         stopMusic,
         setIntensity,
         setHurry,
+        setPageHidden,
         playPop,
         playSuccess,
         playFail,

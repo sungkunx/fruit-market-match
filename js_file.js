@@ -1100,6 +1100,10 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+document.addEventListener('visibilitychange', () => {
+    GameAudio.setPageHidden(document.hidden);
+});
+
 // Initialize
 loadGameData();
 setupMarketDecorations();
