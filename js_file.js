@@ -25,6 +25,32 @@ let gameSession = 0;
 let pointerStart = null;
 let comboTextTimer;
 
+const BULB_COUNT = 12;
+const CONFETTI_COUNT = 24;
+const CONFETTI_COLORS = ['#E8413B', '#FFC53D', '#6DB33F', '#FF9F5A', '#FFF1D6'];
+
+// Builds the light bulbs and confetti pieces once. CSS decides when they show.
+function setupMarketDecorations() {
+    const lights = document.getElementById('stringLights');
+    for (let i = 0; i < BULB_COUNT; i++) {
+        const bulb = document.createElement('span');
+        bulb.className = 'bulb';
+        bulb.style.marginTop = (i % 3) * 5 + 'px';
+        bulb.style.animationDelay = (i * 0.1).toFixed(1) + 's';
+        lights.appendChild(bulb);
+    }
+
+    const confetti = document.getElementById('confetti');
+    for (let i = 0; i < CONFETTI_COUNT; i++) {
+        const piece = document.createElement('span');
+        piece.style.left = (i * 4 + Math.random() * 3).toFixed(1) + '%';
+        piece.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+        piece.style.animationDuration = (2.6 + Math.random() * 2).toFixed(1) + 's';
+        piece.style.animationDelay = (Math.random() * 3).toFixed(1) + 's';
+        confetti.appendChild(piece);
+    }
+}
+
 function updateSoundButtons() {
     const label = GameAudio.isMuted() ? '🔇' : '🔊';
     document.querySelectorAll('.sound-btn').forEach(button => {
@@ -555,7 +581,8 @@ function startGame() {
     
     // Hide start screen
     document.getElementById('startScreen').style.display = 'none';
-    
+    document.body.classList.remove('on-start');
+
     // Show countdown
     showCountdown();
 }
@@ -640,7 +667,8 @@ function restartGame() {
     // Hide game over screen and show start screen
     document.getElementById('gameOver').style.display = 'none';
     document.getElementById('startScreen').style.display = 'flex';
-    
+    document.body.classList.add('on-start');
+
     // Reset siren warning
     document.getElementById('sirenWarning').classList.remove('siren-active');
 }
@@ -1074,6 +1102,7 @@ document.addEventListener('keydown', function(e) {
 
 // Initialize
 loadGameData();
+setupMarketDecorations();
 updateSoundButtons();
 buildGrid();
 setupGridInput();
