@@ -612,7 +612,7 @@ body.combo-bg-3 {
 }
 
 .start-title {
-    margin-bottom: 25px;
+    margin-bottom: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -620,7 +620,8 @@ body.combo-bg-3 {
 }
 
 .main-title-image {
-    height: 210px;
+    height: 200px;
+    max-width: 92vw;
     object-fit: contain;
 }
 
@@ -628,15 +629,15 @@ body.combo-bg-3 {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 15px;
-    margin-top: 10px;
-    margin-bottom: 15px;
+    gap: 8px;
+    margin-top: 0;
+    margin-bottom: 4px;
     transform: scale(0.9);
 }
 
 .decoration-fruit {
-    width: 46px;
-    height: 46px;
+    width: 42px;
+    height: 42px;
     object-fit: contain;
     transition: transform 0.3s ease;
     cursor: pointer;
@@ -655,7 +656,7 @@ body.combo-bg-3 {
 .button-container {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
     align-items: center;
     transform: scale(0.9);
 }
@@ -685,7 +686,7 @@ body.combo-bg-3 {
     justify-content: space-between;
     width: 100%;
     max-width: 350px;
-    margin: 20px;
+    margin: 8px 20px 12px;
     background: var(--cream);
     border: 4px solid var(--wood-dark);
     border-radius: 18px;
